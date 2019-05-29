@@ -20,7 +20,7 @@ class FaceModel:
 
         with tf.variable_scope(self.name):
 
-            self.keep_prob = tf.placeholder(tf.float32)
+            self.rate = tf.placeholder(tf.float32)
             self.people = tf.placeholder(tf.float32)
             self.X = tf.placeholder(tf.float32, [None,28,28,3])
             #x_img = tf.reshape(self.X, [-1,28,28,3])
@@ -43,23 +43,23 @@ class FaceModel:
 
             h1 = tf.nn.relu(tf.nn.conv2d(self.X, w1, strides=[1, 1, 1, 1], padding='SAME') + b1)
             #p1 = tf.nn.max_pool(h1,ksize=[1,2,2,1], strides=[1, 2, 2, 1], padding='SAME')
-            d1 = tf.nn.dropout(h1, keep_prob= self.keep_prob)
+            d1 = tf.nn.dropout(h1, rate= self.rate)
 
             h2 = tf.nn.relu(tf.nn.conv2d(d1, w2, strides=[1, 1, 1, 1], padding='SAME') + b2)
             p2 = tf.nn.max_pool(h2,ksize=[1,2,2,1], strides=[1, 2, 2, 1], padding='SAME')
-            d2 = tf.nn.dropout(p2, keep_prob= self.keep_prob)
+            d2 = tf.nn.dropout(p2, rate= self.rate)
 
             h3 = tf.nn.relu(tf.nn.conv2d(d2, w3, strides=[1, 1, 1, 1], padding='SAME') + b3)
             #p3 = tf.nn.max_pool(h3,ksize=[1,2,2,1], strides=[1, 2, 2, 1], padding='SAME')
-            d3 = tf.nn.dropout(h3, keep_prob= self.keep_prob)
+            d3 = tf.nn.dropout(h3, rate= self.rate)
 
             h4 = tf.nn.relu(tf.nn.conv2d(d3, w4, strides=[1, 1, 1, 1], padding='SAME') + b4)
             p4 = tf.nn.max_pool(h4,ksize=[1,2,2,1], strides=[1, 2, 2, 1], padding='SAME')
-            d4 = tf.nn.dropout(p4, keep_prob= self.keep_prob)
+            d4 = tf.nn.dropout(p4, rate= self.rate)
 
             d4_conv = tf.reshape(d4, [-1, 7 * 7 * 128])
             hfc1 = tf.nn.relu(tf.matmul(d4_conv, wfc1) + bfc1)
-            fd1 = tf.nn.dropout(hfc1, keep_prob= self.keep_prob)
+            fd1 = tf.nn.dropout(hfc1, rate= self.rate)
 
             self.logits = tf.matmul(fd1, wfc2) + bfc2
             self.y_pred = tf.nn.softmax(self.logits)
@@ -73,18 +73,21 @@ class FaceModel:
         self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 
-    def predict(self,x_test, keep_prob = 1):
-        return self.sess.run(self.prediction, feed_dict={self.X : x_test, self.keep_prob : keep_prob})
+    def predict(self,x_test, rate = 0):
+        return self.sess.run(self.prediction, feed_dict={self.X : x_test, self.rate : rate})
 
-    def get_accuracy(self,x_test,y_test, keep_prob = 1):
-        return self.sess.run(self.accuracy, feed_dict={self.X : x_test,self.Y : y_test, self.keep_prob : keep_prob})
+    def get_accuracy(self,x_test,y_test, rate = 0):
+        targets_one_hot = np.zeros((y_test.shape[0], self.classes_num))
+        targets_one_hot[range(y_test.shape[0]), y_test] = 1
+        targets_one_hot = np.array(targets_one_hot)
+        return self.sess.run(self.accuracy, feed_dict={self.X : x_test,self.Y : targets_one_hot, self.rate : rate})
 
-    def valid_accuracy(self, x_test, y_test, keep_prob= 1):
-        return self.sess.run([self.loss, self.accuracy], feed_dict={self.X: x_test, self.Y: y_test, self.keep_prob: keep_prob})
+    def valid_accuracy(self, x_test, y_test, rate = 0):
+        return self.sess.run([self.loss, self.accuracy], feed_dict={self.X: x_test, self.Y: y_test, self.rate: rate})
 
-    def train(self, x_data, y_data, keep_prob = 0.7):
-        return self.sess.run([self.loss, self.optimizer], feed_dict={self.X : x_data, self.Y : y_data, self.keep_prob :
-            keep_prob})
+    def train(self, x_data, y_data, rate = 0.3):
+        return self.sess.run([self.loss, self.optimizer], feed_dict={self.X : x_data, self.Y : y_data, self.rate :
+            rate})
 
 
 
@@ -142,12 +145,14 @@ class pp:
 
         a = np.array(a)
         c = np.array(c)
-        e = np.array(e)
+        self.e = np.array(e)
         #print(a.shape[0])
         # b = tf.one_hot(b,5)
         # d = tf.one_hot(d,5)
-        # f = tf.one_hot(f,5)
-
+        # temp_f = np.zeros((f.shape[0],self.classes_num))
+        # temp_f[range(f.shape[0]),f] = 1
+        # self.f = np.array(temp_f)
+        self.f = f
 
 
         sess = tf.Session()
@@ -198,7 +203,5 @@ class pp:
         print('End of training')
 
 
-        for input_batch, target_batch in self.test_data:
-             accu = self.fm.get_accuracy(input_batch,target_batch)
+        accu = self.fm.get_accuracy(self.e, self.f)
         print(accu)
-

@@ -5,7 +5,7 @@ import mlproject
 p = mlproject.pp(5,100,10)
 p.training()
 
-vs = cv2.VideoCapture('we.mp4')
+vs = cv2.VideoCapture('ro.mp4')
 
 
 net = cv2.dnn.readNetFromCaffe('deploy.prototxt.txt','res10_300x300_ssd_iter_140000.caffemodel')
